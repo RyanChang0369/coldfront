@@ -1,11 +1,14 @@
 import datetime
 import pprint
+from typing import Any, Dict, Optional
+from django import http
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core import serializers
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Q
 from django.forms import formset_factory
@@ -461,6 +464,47 @@ class ProjectUpdateView(SuccessMessageMixin, LoginRequiredMixin, UserPassesTestM
     def get_success_url(self):
         return reverse('project-detail', kwargs={'pk': self.object.pk})
 
+
+class ProjectExportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'project/project_export.html'
+
+    def test_func(self) -> Optional[bool]:
+        """ UserPassesTestMixin Tests"""
+        if self.request.user.is_superuser:
+            return True
+
+        project_obj = get_object_or_404(Project, pk=self.kwargs.get('pk'))
+
+        if project_obj.pi == self.request.user:
+            return True
+
+        if project_obj.projectuser_set.filter(user=self.request.user, role__name='Manager', status__name='Active').exists():
+            return True
+
+    def dispatch(self, request: http.HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        project_obj = get_object_or_404(Project, pk=self.kwargs.get('pk'))
+        if project_obj.status.name not in ['Active', 'New', ]:
+            messages.error(
+                request, 'You cannot add users to an archived project.')
+            return HttpResponseRedirect(reverse('project-detail', kwargs={'pk': project_obj.pk}))
+        else:
+            return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, *args, **kwargs):
+        context = super().get_context_data(*args, **kwargs)
+        
+        data = [
+            serializers.serialize('json', Project.objects.all()),
+            serializers.serialize('json', User.objects.all()),
+            serializers.serialize('json', Publication.objects.all()),
+            serializers.serialize('json', Grant.objects.all()),
+            serializers.serialize('json', Allocation.objects.all())
+            # Resource does not appear to be finished. Once it is, serialize it here
+        ]
+
+        context['export_data'] = data
+        context['project'] = Project.objects.get(pk=self.kwargs.get('pk'))
+        return context
 
 class ProjectAddUsersSearchView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = 'project/project_add_users.html'
