@@ -10,10 +10,10 @@ Create Project
 
 
 {% block content %}
-  <form method="post">{% csrf_token %}
-    {{ form|crispy }}
-    <input class="btn btn-primary" type="submit" value="Save" />
-    <a class="btn btn-secondary" href="{% url 'project-list' %}" role="button">Cancel</a><br>
+<form method="post">{% csrf_token %}
+  {{ form|crispy }}
+  <input class="btn btn-primary" type="submit" value="Save" />
+  <a class="btn btn-secondary" href="{% url 'project-list' %}" role="button">Cancel</a><br>
 </form>
 
 <script>

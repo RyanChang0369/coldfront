@@ -5,8 +5,6 @@
 
 
 {% block content %}
-<!-- <a id="export_a" href="{% url 'project-export' project.pk %}" download></a> -->
-
 <script>
     // From https://ourcodeworld.com/articles/read/189/how-to-create-a-file-and-generate-a-download-with-javascript-in-the-browser-without-a-server
     function download(filename, text)
@@ -25,10 +23,12 @@
 
     $(document).ready(function()
     {
-        var data = "{{ export_data }}";
-        console.log(data);
+        // There is some risk of HTML/JS injection
+        // here. Might want to do this in Python?
+        // var data = " export_data|safe ";
+        // console.log(data);
         
-        download("project.json", data);
+        // download("project.json", data);
 
         self.close();
     });
