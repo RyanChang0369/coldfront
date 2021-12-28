@@ -36,7 +36,7 @@ from coldfront.core.project.forms import (ProjectAddUserForm,
                                           ProjectRemoveUserForm,
                                           ProjectReviewEmailForm,
                                           ProjectReviewForm, ProjectSearchForm,
-                                          ProjectUserUpdateForm)
+                                          ProjectUserUpdateForm, ProjectImportForm)
 from coldfront.core.project.models import (Project, ProjectReview,
                                            ProjectReviewStatusChoice,
                                            ProjectStatusChoice, ProjectUser,
@@ -58,6 +58,16 @@ if EMAIL_ENABLED:
     EMAIL_DIRECTOR_EMAIL_ADDRESS = import_from_settings(
         'EMAIL_DIRECTOR_EMAIL_ADDRESS')
     EMAIL_SENDER = import_from_settings('EMAIL_SENDER')
+
+
+PROJECT_SERIALIZE_DATA = [
+            serializers.serialize('json', Project.objects.all()),
+            serializers.serialize('json', User.objects.all()),
+            serializers.serialize('json', Publication.objects.all()),
+            serializers.serialize('json', Grant.objects.all()),
+            serializers.serialize('json', Allocation.objects.all())
+            # Resource does not appear to be finished. Once it is, serialize it here
+        ]
 
 
 class ProjectDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
@@ -468,34 +478,35 @@ class ProjectUpdateView(SuccessMessageMixin, LoginRequiredMixin, UserPassesTestM
 
 
 class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
-    template_name = 'project_import.html'
+    model = Project
+    template_name = 'project/project_import.html'
+    # template_name = 'import_form'
+    # fields = ['title', 'description', 'field_of_science', ]
 
     def test_func(self) -> Optional[bool]:
         """ UserPassesTestMixin Tests"""
         if self.request.user.is_superuser:
             return True
 
-        project_obj = get_object_or_404(Project, pk=self.kwargs.get('pk'))
-
-        if project_obj.pi == self.request.user:
-            return True
-
-        if project_obj.projectuser_set.filter(user=self.request.user, role__name='Manager', status__name='Active').exists():
+        if self.request.user.userprofile.is_pi:
             return True
     
-    def dispatch(self, request, *args, **kwargs):
-        project_obj = get_object_or_404(Project, pk=self.kwargs.get('pk'))
-        if project_obj.status.name not in ['Active', 'New', ]:
-            messages.error(
-                request, 'You cannot add users to an archived project.')
-            return HttpResponseRedirect(reverse('project-detail', kwargs={'pk': project_obj.pk}))
-        else:
-            return super().dispatch(request, *args, **kwargs)
+    # def dispatch(self, request, *args, **kwargs):
+    #     project_obj = get_object_or_404(Project, pk=self.kwargs.get('pk'))
+    #     if project_obj.status.name not in ['Active', 'New', ]:
+    #         messages.error(
+    #             request, 'You cannot add users to an archived project.')
+    #         return HttpResponseRedirect(reverse('project-detail', kwargs={'pk': project_obj.pk}))
+    #     else:
+    #         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
-        context['project'] = Project.objects.get(pk=self.kwargs.get('pk'))
+        context['project_import_form'] = ProjectImportForm()
         return context
+
+    def get_success_url(self):
+        return reverse('project-detail', kwargs={'pk': self.object.pk})
 
 
 class ProjectExportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -521,29 +532,15 @@ class ProjectExportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                 request, 'You cannot export an archived project.')
             return HttpResponseRedirect(reverse('project-detail', kwargs={'pk': project_obj.pk}))
         else:
-            data = [
-                serializers.serialize('json', Project.objects.all()),
-                serializers.serialize('json', User.objects.all()),
-                serializers.serialize('json', Publication.objects.all()),
-                serializers.serialize('json', Grant.objects.all()),
-                serializers.serialize('json', Allocation.objects.all())
-                # Resource does not appear to be finished. Once it is, serialize it here
-            ]
-
-            response = JsonResponse(data, content_type='application/json', safe=False)
+            response = JsonResponse(PROJECT_SERIALIZE_DATA, content_type='application/json', safe=False)
             response['Content-Disposition'] = 'attachment; filename="project.json"'
             
             return response
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
-
-        # context['export_data'] = data
         context['project'] = Project.objects.get(pk=self.kwargs.get('pk'))
         return context
-    
-    # def get(self, request: http.HttpRequest, *args: Any, **kwargs: Any) -> http.HttpResponse:
-    #     return super().get(request, *args, **kwargs)
 
 
 class ProjectAddUsersSearchView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):

@@ -3,6 +3,10 @@
 {% load humanize %}
 {% load static %}
 
-{% block content %}
+{% block title %}
+Import Project
+{% endblock %}
 
+{% block content %}
+{{ project_import_form|crispy }}
 {% endblock %}
