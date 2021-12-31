@@ -8,5 +8,13 @@ Import Project
 {% endblock %}
 
 {% block content %}
-{{ project_import_form|crispy }}
+<h3>Import Project</h3>
+<form enctype="multipart/form-data" method="post">
+    {% csrf_token %}
+    {{ project_import_form|crispy }}
+    <br>
+    <input class="btn btn-primary" type="submit" value="Import">
+    <a class="btn btn-secondary" href="{% url 'project-list' %}" role="button">Cancel</a>
+</form>
+
 {% endblock %}

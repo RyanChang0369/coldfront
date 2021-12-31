@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core import serializers
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.db.models import Q
+from django.db.models import Q, Max
 from django.forms import formset_factory
 from django.http import (HttpResponse, HttpResponseForbidden,
                          HttpResponseRedirect, response, JsonResponse)
@@ -61,7 +61,7 @@ if EMAIL_ENABLED:
 
 
 PROJECT_SERIALIZE_DATA = [
-            serializers.serialize('json', Project.objects.all()),
+            json.loads(serializers.serialize('json', Project.objects.all())),
             serializers.serialize('json', User.objects.all()),
             serializers.serialize('json', Publication.objects.all()),
             serializers.serialize('json', Grant.objects.all()),
@@ -480,8 +480,6 @@ class ProjectUpdateView(SuccessMessageMixin, LoginRequiredMixin, UserPassesTestM
 class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     model = Project
     template_name = 'project/project_import.html'
-    # template_name = 'import_form'
-    # fields = ['title', 'description', 'field_of_science', ]
 
     def test_func(self) -> Optional[bool]:
         """ UserPassesTestMixin Tests"""
@@ -491,14 +489,37 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         if self.request.user.userprofile.is_pi:
             return True
     
-    # def dispatch(self, request, *args, **kwargs):
-    #     project_obj = get_object_or_404(Project, pk=self.kwargs.get('pk'))
-    #     if project_obj.status.name not in ['Active', 'New', ]:
-    #         messages.error(
-    #             request, 'You cannot add users to an archived project.')
-    #         return HttpResponseRedirect(reverse('project-detail', kwargs={'pk': project_obj.pk}))
-    #     else:
-    #         return super().dispatch(request, *args, **kwargs)
+    def post(self, request, *args, **kwargs):
+        form = ProjectImportForm(request.POST, request.FILES)
+
+        print(form.is_valid())
+        if form.is_valid():
+            file = request.FILES['file_upload']
+            file_content = file.read()
+
+            # The data at this point is grouped and each member needs to be
+            # individually feed through the deserializer
+            grouped_data = json.loads(file_content)
+
+            
+            
+            for member in grouped_data:
+                # data_obj has the complete data of the Django model
+                data_obj = serializers.deserialize('json', member)  # TODO: Do something with this object
+
+                for obj in data_obj:
+                    # obj is deserialized and can now be saved.
+
+                    if (type(obj.object) == Project):
+                        obj.object.pk = Project.objects.all().aggregate(Max('pk'))['pk__max'] + 1
+
+                    obj.save()
+
+                print(member)
+
+
+
+        return HttpResponseRedirect(reverse('project-list'))
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
@@ -508,6 +529,9 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def get_success_url(self):
         return reverse('project-detail', kwargs={'pk': self.object.pk})
 
+def fix_serialize_data(data) -> list:
+    # return list([entry for entry in json.loads(serializers.serialize('json', data))])
+    return serializers.serialize('json', data)
 
 class ProjectExportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = 'project/project_export.html'
@@ -532,7 +556,15 @@ class ProjectExportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                 request, 'You cannot export an archived project.')
             return HttpResponseRedirect(reverse('project-detail', kwargs={'pk': project_obj.pk}))
         else:
-            response = JsonResponse(PROJECT_SERIALIZE_DATA, content_type='application/json', safe=False)
+            serialize_data = [
+                fix_serialize_data(Project.objects.all()),
+                fix_serialize_data(User.objects.all()),
+                fix_serialize_data(Publication.objects.all()),
+                fix_serialize_data(Grant.objects.all()),
+                fix_serialize_data(Allocation.objects.all())
+                # Resource does not appear to be finished. Once it is, serialize it here
+            ]
+            response = JsonResponse(serialize_data, content_type='application/json', safe=False)
             response['Content-Disposition'] = 'attachment; filename="project.json"'
             
             return response
