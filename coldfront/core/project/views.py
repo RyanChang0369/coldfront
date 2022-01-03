@@ -244,6 +244,7 @@ class ProjectListView(LoginRequiredMixin, ListView):
         context['filter_parameters_with_order_by'] = filter_parameters_with_order_by
 
         project_list = context.get('project_list')
+        # project_list = Project.objects.all()
         paginator = Paginator(project_list, self.paginate_by)
 
         page = self.request.GET.get('page')
@@ -509,9 +510,17 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
 
                 for obj in data_obj:
                     # obj is deserialized and can now be saved.
-
+                    # Create a new project type
                     if (type(obj.object) == Project):
-                        obj.object.pk = Project.objects.all().aggregate(Max('pk'))['pk__max'] + 1
+                        obj.object.pk = None
+
+                        obj.save()
+
+                        # Assign current user
+                        
+                        Project.objects.filter(pk=obj.object.pk).update(projectuser=self.request.user)
+
+                        continue
 
                     obj.save()
 
