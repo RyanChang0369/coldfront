@@ -493,7 +493,7 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def post(self, request, *args, **kwargs):
         form = ProjectImportForm(request.POST, request.FILES)
 
-        print(form.is_valid())
+        # print(form.is_valid())
         if form.is_valid():
             file = request.FILES['file_upload']
             file_content = file.read()
@@ -501,7 +501,7 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             # The data at this point is grouped and each member needs to be
             # individually feed through the deserializer
             grouped_data = json.loads(file_content)
-
+            
             
             
             for member in grouped_data:
@@ -512,19 +512,25 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     # obj is deserialized and can now be saved.
                     # Create a new project type
                     if (type(obj.object) == Project):
-                        obj.object.pk = None
-
+                        # obj.object.pk = None
+                        project_obj = obj.object
+                        project_obj.pk = None
+                        
                         obj.save()
 
-                        # Assign current user
-                        
-                        Project.objects.filter(pk=obj.object.pk).update(projectuser=self.request.user)
+                        # Assign current user.
+                        project_user_obj = ProjectUser.objects.create(
+                            user=self.request.user,
+                            project=project_obj,
+                            role=ProjectUserRoleChoice.objects.get(name='Manager'),
+                            status=ProjectUserStatusChoice.objects.get(name='Active')
+                        )
 
                         continue
 
                     obj.save()
 
-                print(member)
+                # print(member)
 
 
 

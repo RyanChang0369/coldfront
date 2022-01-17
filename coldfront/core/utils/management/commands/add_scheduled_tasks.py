@@ -1,4 +1,5 @@
 import datetime
+import pytz
 import os
 
 from django.conf import settings
@@ -16,8 +17,8 @@ class Command(BaseCommand):
         date = datetime.datetime.now() + datetime.timedelta(days=1)
         schedule('coldfront.core.allocation.tasks.update_statuses',
                  schedule_type=Schedule.DAILY,
-                 next_run=datetime.datetime(date.year, date.month, date.day, 00, 00, 00, 000000))
+                 next_run=datetime.datetime(date.year, date.month, date.day, 00, 00, 00, 000000, pytz.timezone(settings.TIME_ZONE)))
 
         schedule('coldfront.core.allocation.tasks.send_expiry_emails',
                  schedule_type=Schedule.DAILY,
-                 next_run=datetime.datetime(date.year, date.month, date.day, 00, 00, 00, 000000))
+                 next_run=datetime.datetime(date.year, date.month, date.day, 00, 00, 00, 000000, pytz.timezone(settings.TIME_ZONE)))
