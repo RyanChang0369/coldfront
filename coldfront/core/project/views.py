@@ -7,7 +7,6 @@ import re
 from re import template
 from sys import prefix
 from typing import Any, Iterable, List, Optional
-from attr import field
 from django import http
 import django
 
