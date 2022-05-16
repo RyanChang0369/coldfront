@@ -546,11 +546,15 @@ class ProjectMergeView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             members = objects.filter(project_id__in = from_ids)
             for member in members:
                 member.project_id = to_id
-                # member.pk = None      # Uncomment if you want to keep the old projects
-                member.save()
+                # member.pk = None      # Uncomment if you want to keep the old projects.
+                try:
+                    member.save()
+                except IntegrityError:
+                    # Member already exists.
+                    member.delete()
+                    pass
 
         proj_list = self.get_proj_list()
-        context = {}
 
         formset = formset_factory(ProjectSelectForm, max_num=len(proj_list))
         formset = formset(request.POST, initial=proj_list, prefix='projectform')
@@ -584,17 +588,9 @@ class ProjectMergeView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             _combine_objects(proj_ids, merged_proj.id, Publication.objects)
 
             # User
-            for proj in projs_to_merge:
-                # Exclude the current user as they will be added later.
-                # This ensures that at least one user has access to the old projects,
-                # if that matters at all.
-                # NOTE: untested
-                ProjectUser.objects.filter(project_id=proj.id)\
-                    .exclude(user_id=self.request.user.id)\
-                    .update(project_id=merged_proj.id)
+            _combine_objects(proj_ids, merged_proj.id, ProjectUser.objects)
 
             # Allocations
-            old_resource_links: dict = Allocation.objects.filter(project_id__in = proj_ids).values('resources')
             _combine_objects(proj_ids, merged_proj.id, Allocation.objects)
 
             # Resources
@@ -605,8 +601,14 @@ class ProjectMergeView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             # Also, the code here doesn't work.
             # _combine_objects(proj_ids, merged_proj.id, Resource.objects)
 
+            # Admin comments, user messages, reviews, and resource outputs
+            _combine_objects(proj_ids, merged_proj.id, ProjectAdminComment.objects)
+            _combine_objects(proj_ids, merged_proj.id, ProjectUserMessage.objects)
+            _combine_objects(proj_ids, merged_proj.id, ProjectReview.objects)
+            _combine_objects(proj_ids, merged_proj.id, ResearchOutput.objects)
+
             # Assign current user
-            assign_user(self.request.user, merged_proj)
+            # assign_user(self.request.user, merged_proj)
 
             # Archive all old projects when done. Remove this for loop if you want to
             # keep them.
