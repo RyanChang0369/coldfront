@@ -808,7 +808,7 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                 :param trans_tbl: dict: The pk translation table with old pks as keys and new
                 pks as values.
                 """
-                if to_name not in do_dict:
+                if to_name not in do_dict or from_name not in trans_tbl:
                     # The requested m2m has not been placed in do_dict
                     # due to it not existing.
                     return
@@ -924,6 +924,7 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     obj.save(update_fields=[field_name])
 
             
+            _update_field("project.project", "auth.user", "pi_id", pk_translation_table)
             _register_field("resource.resource", "resource.resource", "parent_resource_id", do_regist_tbl, pk_translation_table)
             _register_m2m("resource.resource", "resource.resource", "linked_resources", do_regist_tbl, pk_translation_table)
             _update_m2m("auth.user", "auth.group", "groups", pk_translation_table)
@@ -959,6 +960,8 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                 , "project.project", "project_id", pk_translation_table
             )
 
+            # assign_user()
+
             # Step 4: Save
             for key in do_dict:
                 for obj in do_dict[key]:
@@ -973,6 +976,9 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             _reassign_field("resource.resource", Resource.objects.all(),
                 "parent_resource_id", do_dict, do_regist_tbl)
 
+            # Sometimes saving the project fails. Try again if that happens.
+            do_dict['project.project'][0].object.save()
+            
         return HttpResponseRedirect(reverse('project-list'))
 
     def get_context_data(self, *args, **kwargs):
