@@ -1,0 +1,397 @@
+/*****************************************************************************************************/
+/*                                                                                                   */
+/*  Branding - MSU Masthead, Search Tool and Standard Footer                                         */
+/*  Verify your website’s font size/weight/color to current branding styles for lines marked "V2.0"  */
+/*                                                                                                   */
+/*****************************************************************************************************/
+
+/* #Set Page Width
+================================================== */
+
+.MSUwrapper {
+    width: 100%; 
+    max-width: 940px; 
+    min-width: 940px; 
+    margin: 0 auto; 
+    clear: both;
+    /* Branding styles */
+    /* The following allows the Masthead and Footer to use Gotham font without affecting the rest of the site.  */
+    /* If the site is already using Gotham font, the following (or similar CSS) should be moved to the body CSS */
+
+    font-family: 'Gotham SSm A', 'Gotham SSm B', arial, sans-serif;    /* V2.0 */
+    font-weight: normal;    /* V2.0 */
+    font-size: 16px;        /* V2.0 */
+    font-size: 1rem;        /* V2.0 */
+    -webkit-font-smoothing: antialiased;                   /* Fix for webkit rendering  */
+    -moz-osx-font-smoothing: grayscale;                    /* Fix for firefox rendering */
+ }
+
+/* You may have to adjust the max-width and min-width to fit the width of your site. 
+If the margin is set differently for your site, fix the margin here to reflect that. */
+
+/* #MSU Masthead
+================================================== */
+
+#MSUheader {
+    height: 60px;
+}
+
+#MSUmasthead {
+    /* width: 50%; */
+    float: left; 
+    position: relative;
+}
+
+#MSUmasthead img.msugraphic-green {
+    padding-top: 12px;
+    display: block;
+}
+#MSUmasthead img.msugraphic-white {
+    padding-top: 12px;
+    display: none;
+}
+
+#MSUmasthead img.print-msugraphic {
+    display: none;
+}
+
+/* Search Tool */
+
+#MSUSearchTool form .hide {
+    position: absolute;
+    left: -9999px;
+}
+
+#MSUSearchTool {
+    width: 50%; 
+    float: left;
+    position: relative;
+    margin-top: 14px;
+}
+
+#MSUSearchTool #search-tool-box {
+    height: 28px;
+    width: 319px;
+    float: right;
+    border: 1px solid #999;
+    -webkit-border-radius: 3px;
+    -moz-border-radius: 3px;
+    border-radius: 3px;
+    font-family: 'Gotham SSm A', 'Gotham SSm B', arial, sans-serif;
+}
+
+#MSUSearchTool.white-fill #search-tool-box {
+    background: #fff;
+}
+
+#MSUSearchTool.no-fill #search-tool-box {
+    background: transparent;
+}
+
+#MSUSearchTool #btn_search {
+    height: 28px;
+    width: 34px;
+    cursor: pointer;
+    outline: 0px none;
+    border: 0px none;
+    float: right;
+    margin: 0 auto;
+    text-indent: -9999px;
+    text-transform: capitalize;
+    -webkit-border-radius: 0px 3px 3px 0px;
+    -moz-border-radius: 0px 3px 3px 0px;
+    border-radius: 0px 3px 3px 0px;
+}
+
+#MSUSearchTool.white-fill #btn_search {
+    background: #fff url(../images/icon-search.png) no-repeat center;
+}
+
+#MSUSearchTool.no-fill #btn_search {
+    background: transparent url(../images/icon-search.png) no-repeat center;
+}
+
+#MSUSearchTool #btn_search:hover {
+    -moz-box-shadow: inset 0 0px 60px rgba(0,0,0,0.3);
+    -webkit-box-shadow: inset 0 0px 60px rgba(0,0,0,0.3);
+    box-shadow: inset 0 0px 60px rgba(0,0,0,0.3);
+}
+
+#MSUSearchTool input[name="q"] {
+    width: 258px;
+    background-color: transparent;
+    border-top-style: none;
+    border-right-style: none;
+    border-bottom-style: none;
+    border-left-style: none;
+    border-top-width: 0px;
+    border-right-width: 0px;
+    border-bottom-width: 0px;
+    border-left-width: 0px;
+    color: #666;
+    font-size: 12px;
+    font-weight: normal;
+    float: left;
+    height: 28px;
+    outline: none;
+    padding-left: 12px;
+    padding-top: 0px;
+}
+
+/* #MSU Footer 
+================================================== */
+
+#footer {
+    height: 170px;
+    font-family: 'Gotham SSm A', 'Gotham SSm B', arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#footer .fourMSUcolumns {
+    width: 221px;
+    float: left;
+    position: relative;
+    margin-right: 18px;
+}
+
+#footer .fourMSUcolumns img {
+    width: 100%;
+    margin-top: 8px; 
+}
+
+#footer .thirteenMSUcolumns {    /* V2.0 */ 
+    width: 660px; 
+    float: left;
+    position: relative; 
+    margin: 5px 0px 0px 0px;
+}
+
+/* Website information with Call Us/Telephone (Footer line 1) */
+
+#footer #standard-footer-site-links ul {
+    margin: 0px;
+    padding: 0px;
+    height: 22px; 
+    border-bottom: 1px dotted #808080;
+    float: left;
+    clear: right;
+}
+
+#footer #standard-footer-site-links ul li {
+    display: inline-block;
+    padding-left: 4px;
+    font-size: 12px;    /* V2.0 */
+    font-size: 1rem;    /* V2.0 */
+    margin-left: 0px;
+    margin-right: 0px;
+}
+
+#footer #standard-footer-site-links ul li:first-child {
+    padding: 0px;
+}
+
+#footer #standard-footer-site-links ul li:nth-child(2) a {
+    padding: 0px 8px 0px 8px;
+}
+
+#footer #standard-footer-site-links ul li:last-child a {
+    border-right: none;
+}
+
+#footer #standard-footer-site-links ul li a {
+    text-decoration: none;
+    padding-right: 8px;
+    font-weight: 500;     /* V2.0 */ 
+}
+
+#footer #standard-footer-site-links ul li a:hover {
+    text-decoration: underline;
+}
+
+#footer.light-background #standard-footer-site-links {
+    color: #18453b;
+}
+
+#footer.light-background #standard-footer-site-links a {
+    color: #18453b;
+    border-right: 1px solid #18453b;
+}
+
+#footer.light-background #standard-footer-site-links ul li:nth-child(2) a {
+    border-left: 1px solid #18354b;
+}
+
+#footer.dark-background #standard-footer-site-links{
+    color: #fff;
+}
+
+#footer.dark-background #standard-footer-site-links ul li:nth-child(2) a {
+    border-left: 1px solid #737373;
+}
+
+#footer.dark-background #standard-footer-site-links a {
+    color: #fff;
+    border-right: 1px solid #737373;
+}
+
+/* Website information - no Call Us/Telephone (Footer line 1) */
+
+#footer #standard-footer-site-nocall-links ul {
+    margin: 0px;
+    padding: 0px;
+    height: 22px; 
+    border-bottom: 1px dotted #808080;
+    float: left;
+    clear: right;
+}
+
+#footer #standard-footer-site-nocall-links ul li {
+    display: inline-block;
+    font-size: 12px;    /* V2.0 */
+    font-size: 1rem;    /* V2.0 */
+    padding-left: 4px;
+}
+#footer #standard-footer-site-nocall-links ul li:first-child {
+    display: inline-block;
+    font-size: 12px;    /* V2.0 */
+    font-size: 1rem;    /* V2.0 */
+    padding-left: 0px;
+}
+
+#footer #standard-footer-site-nocall-links ul li a {
+    padding: 0px 8px 0px 8px;
+}
+#footer #standard-footer-site-nocall-links ul li a:first-child {
+    padding: 0px 8px 0px 0px;
+}
+
+#footer #standard-footer-site-nocall-links ul li a {
+    padding-right: 8px;
+    text-decoration: none;
+    font-weight: 500;     /* V2.0 */
+}
+
+#footer #standard-footer-site-nocall-links ul li a:hover {
+    text-decoration: underline;
+}
+
+#footer.light-background #standard-footer-site-nocall-links {
+    color: #18453b;
+}
+
+#footer.light-background #standard-footer-site-nocall-links ul li a {
+    color: #18453b;
+    border-right: 1px solid #18354b;
+}
+#footer.light-background #standard-footer-site-nocall-links ul li:last-child a {
+    border-right: none;
+}
+
+#footer.dark-background #standard-footer-site-nocall-links{
+    color: #fff;
+}
+
+#footer.dark-background #standard-footer-site-nocall-links ul li a {
+    color: #fff;
+    border-right: 1px solid #737373;
+}
+#footer.dark-background #standard-footer-site-nocall-links ul li:last-child a {
+    color: #fff;
+    border-right: none;
+}
+
+/* MSU information (Footer lines 2-3) */ 
+
+#footer #standard-footer-MSU-info {
+    font-size: 10px;          /* V2.0 */
+    font-size: 0.625rem;    /* V2.0 */
+    margin-top: 2px; 
+    padding-top: 0px;
+    float: left;
+    clear: right;
+}
+
+#footer #standard-footer-MSU-info ul {
+    margin: 0px;
+    padding: 0px;
+    height: 16px;
+    font-size: 10px;          /* V2.0 */
+    font-size: 0.625rem;    /* V2.0 */
+}
+
+#footer #standard-footer-MSU-info ul li {
+    margin-bottom: 0px;
+    line-height: 10px;
+    display: inline;
+    border-right: 1px solid #999;
+    padding: 0px 8px 0px 4px;
+    margin-left: 0px;
+    margin-right: 0px;
+}
+
+#footer #standard-footer-MSU-info ul li.spartans-will {
+    text-transform: uppercase;
+    font-weight: 600;    /* V2.0 */
+}
+
+#footer #standard-footer-MSU-info ul li:first-child {
+    padding-left: 0px;
+}
+
+#footer #standard-footer-MSU-info ul li:last-child {
+    border-right: 0px;
+}    
+
+#footer #standard-footer-MSU-info ul li a {
+    text-decoration: none;
+}
+
+#footer #standard-footer-MSU-info ul li a:hover {
+    text-decoration: underline;
+}
+
+#footer.light-background #standard-footer-MSU-info{
+    color: #18453b;
+}
+
+#footer.light-background #standard-footer-MSU-info a, #footer.light-background #standard-footer-MSU-info .msu-phone {
+    color: #4c7e00;    /* V2.0 */
+}
+
+#footer.dark-background #standard-footer-MSU-info {
+    color: #fff;
+}
+
+#footer.dark-background #standard-footer-MSU-info a, #footer.dark-background #standard-footer-MSU-info .msu-phone {
+    color: #81d300;     /* V2.0 */
+}
+
+#standard-footer-MSU-wordmark img.print-msuwordmark {
+    display: none;
+}
+
+/* #Print Styles
+================================================== */
+@media print {
+
+    #MSUmasthead img.print-msugraphic, #standard-footer-MSU-wordmark img.print-msuwordmark {
+        display: block;
+    }
+
+    #MSUmasthead img.msugraphic-green, #MSUmasthead img.msugraphic-white {
+        display: none;
+    }
+    #standard-footer-MSU-wordmark img.msuwordmark-green, #standard-footer-MSU-wordmark img.msuwordmark-white {
+        display: none;
+    }
+
+    #MSUSearchTool #search-tool-box{
+        margin-right: 12px;
+    }
+
+}
+
+/* End of Branding - MSU Masthead, Search Tool and Standard Footer */
+/********************************************************************/
+
