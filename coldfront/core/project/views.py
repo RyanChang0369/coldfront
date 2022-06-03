@@ -1,14 +1,10 @@
 import datetime
 import itertools
 from multiprocessing.managers import BaseManager
-import pprint
 import json
 import re
-from re import template
-from sys import prefix
 from typing import Any, Iterable, List, Optional
 from django import http
-import django
 
 from django.conf import settings
 from django.contrib import messages
@@ -16,17 +12,16 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.contrib.auth.models import User, Group
 from django.db import IntegrityError
+from coldfront.core.user.models import UserProfile
 from coldfront.core.utils.common import import_from_settings
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core import serializers
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Q, QuerySet
 from django.forms import formset_factory
-from django.http import (HttpRequest, HttpResponse, HttpResponseForbidden,
-                         HttpResponseRedirect, JsonResponse)
+from django.http import (HttpResponse, HttpResponseRedirect, JsonResponse)
 from django.forms.models import model_to_dict
 from django.shortcuts import get_object_or_404, redirect, render
-from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
@@ -664,15 +659,15 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                 if cur_vals[key] == new_vals[key]:
                     return True
 
-            # id keys will be updated later in the code
-            for key in cur_vals.keys():
-                cur_val = cur_vals[key]
-                new_val = new_vals[key]
+            # # id keys will be updated later in the code
+            # for key in cur_vals.keys():
+            #     cur_val = cur_vals[key]
+            #     new_val = new_vals[key]
 
-                if key != "id" and cur_val != new_val:
-                    return False
+            #     if key != "id" and cur_val != new_val:
+            #         return False
             
-            return True
+            return False
 
         form = ProjectImportForm(request.POST, request.FILES)
 
@@ -897,6 +892,9 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     return
 
                 for obj in query:
+                    if obj.pk not in trans_tbl[name][m2m_name]:
+                        continue
+
                     for id in trans_tbl[name][m2m_name][obj.pk]:
                         getattr(obj, m2m_name).add(
                             query.filter(pk=id)[0]
@@ -920,6 +918,9 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     return
 
                 for obj in query:
+                    if obj.pk not in trans_tbl[name][field_name]:
+                        continue
+
                     setattr(obj, field_name, trans_tbl[name][field_name][obj.pk])
                     obj.save(update_fields=[field_name])
 
@@ -928,6 +929,7 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             _register_field("resource.resource", "resource.resource", "parent_resource_id", do_regist_tbl, pk_translation_table)
             _register_m2m("resource.resource", "resource.resource", "linked_resources", do_regist_tbl, pk_translation_table)
             _update_m2m("auth.user", "auth.group", "groups", pk_translation_table)
+            _update_field("user.userprofile", "auth.user", "user_id", pk_translation_table)
             _update_m2m("resource.resource", "auth.user", "allowed_users", pk_translation_table)
             _update_m2m("resource.resource", "auth.group", "allowed_groups", pk_translation_table)
             _update_m2m("allocation.allocation", "resource.resource", "resources", pk_translation_table)
@@ -960,15 +962,17 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                 , "project.project", "project_id", pk_translation_table
             )
 
-            # assign_user()
-
             # Step 4: Save
+            resave_proj = False
+
             for key in do_dict:
                 for obj in do_dict[key]:
                     try:
                         obj.save()
                     except IntegrityError:
                         # Other object in many to many field not saved yet.
+                        if isinstance(obj, Project):
+                            resave_proj = True
                         pass
 
             _reassign_m2m("resource.resource", Resource.objects.all(),
@@ -976,8 +980,9 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             _reassign_field("resource.resource", Resource.objects.all(),
                 "parent_resource_id", do_dict, do_regist_tbl)
 
-            # Sometimes saving the project fails. Try again if that happens.
-            do_dict['project.project'][0].object.save()
+            if resave_proj:
+                # Sometimes saving the project fails. Try again if that happens.
+                do_dict['project.project'][0].object.save()
             
         return HttpResponseRedirect(reverse('project-list'))
 
@@ -995,7 +1000,6 @@ def fix_serialize_data(data: QuerySet) -> list:
 
     :param data: QuerySet: QuerySet to serialize.
     """
-    # return list([entry for entry in json.loads(serializers.serialize('json', data))])
     return serializers.serialize('json', data)
 
 class ProjectExportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -1080,10 +1084,12 @@ class ProjectExportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                 [note.author.id for note in alloc_admin_notes],
                 [note.author.id for note in alloc_user_notes]
             ))
+            
 
             serialized_data = [
                 fix_serialize_data(Project.objects.filter(pk__exact=p_id)),    # Get current project
                 fix_serialize_data(User.objects.filter(pk__in=user_ids)),
+                fix_serialize_data(UserProfile.objects.filter(user_id__in=user_ids)),
                 fix_serialize_data(Group.objects.filter(pk__in=resource_group_ids)),
                 fix_serialize_data(proj_users),
                 fix_serialize_data(Publication.objects.filter(project_id=p_id)),
