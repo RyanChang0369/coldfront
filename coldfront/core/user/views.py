@@ -16,9 +16,15 @@ from django.views.generic import ListView, TemplateView
 
 from coldfront.core.project.models import Project, ProjectUser
 from coldfront.core.user.forms import UserSearchForm
+from coldfront.core.user.serializers import UserSerializer
 from coldfront.core.user.utils import CombinedUserSearch
 from coldfront.core.utils.common import import_from_settings
 from coldfront.core.utils.mail import send_email_template
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.renderers import TemplateHTMLRenderer
+from rest_framework import permissions
 
 logger = logging.getLogger(__name__)
 EMAIL_ENABLED = import_from_settings('EMAIL_ENABLED', False)
@@ -269,3 +275,23 @@ class UserListAllocations(LoginRequiredMixin, UserPassesTestMixin, TemplateView)
         context['user_dict'] = user_dict
 
         return context
+
+
+class UserListREST(APIView):
+    """
+    Sample view that demostrates that REST is working.
+    REST can also render HTML if a template is provided.
+
+    List all users.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    # To see the default REST view page,
+    # remove render_classes and template_name.
+    # renderer_classes = [TemplateHTMLRenderer]
+    # template_name = 'user/user_list_rest.html'
+
+    def get(self, request, format=None):
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return Response({'users': serializer.data})

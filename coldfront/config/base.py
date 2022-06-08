@@ -54,6 +54,7 @@ INSTALLED_APPS += [
     'sslserver',
     'django_q',
     'simple_history',
+    'rest_framework',
 ]
 
 # ColdFront Apps
