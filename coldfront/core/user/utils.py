@@ -1,5 +1,7 @@
 import abc
+from enum import Enum
 import logging
+import re
 from typing import Iterable, List
 
 from django.contrib.auth.models import User
@@ -123,20 +125,63 @@ class InferUsernameFromEmail:
     in Coldfront. As such, we can infer the 'correct' username from the user's
     email address.
     """
+    class KeyOption(Enum):
+        ID = 0,
+        ORIGINAL_USERNAME = 1,
+        EMAIL = 2,
 
-    def __init__(self, users: Iterable[User]) -> None:
+    def __init__(self, users: Iterable[User], key_option: KeyOption, unique_names: bool) -> None:
+        """
+        Creates the utility.
+
+        :param users: List of users
+        :param key_option: What to use for the keys of the dictionary. See search.
+        :param unique_names: If true, ensure that all generated usernames are unique.
+        """
         self.users = users
+        self.key_option = key_option
+        self.unique_names = unique_names
     
+    def next_username(self, username: str, used_usernames: set[str]):
+        """
+        Provides the next username in numerical order.
+        """
+        while username in used_usernames:
+            match = re.search("\d+$", username)
+
+            if match is None:
+                username = username + '0'
+            else:
+                next = int(match[0]) + 1
+                username = re.sub("\d+$", str(next), username)
+
+        return username
+
     def search(self) -> List[dict]:
         """
-        Performs the search. Returns dictionary with keys 'username', the
-        inferred usenames, and 'email', the email of the user.
+        Performs the search. Returns dictionary with KeyOption as keys
+        and the inferred usernames as values.
         """
         context = []
 
+        if self.unique_names:
+            used_usernames = set()
+
         for user in self.users:
             username = user.email.split('@')[0]
-            data = { user.email: username }
+            
+            if self.unique_names and username in used_usernames:
+                username = self.next_username(username, used_usernames)
+            
+            used_usernames.add(username)
+            
+            match self.key_option:
+                case self.KeyOption.ID:
+                    data = { user.pk: username }
+                case self.KeyOption.EMAIL:
+                    data = { user.email: username }
+                case self.KeyOption.ORIGINAL_USERNAME:
+                    data = { user.username: username }
             context.append(data)
         
         return context

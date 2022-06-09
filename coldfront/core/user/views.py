@@ -363,7 +363,7 @@ class UserSelectResults(LoginRequiredMixin, UserPassesTestMixin, View):
             }
 
             # Testing InferUsernameFromEmail
-            infer = InferUsernameFromEmail(avail_users)
+            infer = InferUsernameFromEmail(avail_users, InferUsernameFromEmail.KeyOption.EMAIL, True)
             messages.info(request, infer.search())
             # End test
 
