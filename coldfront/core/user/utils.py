@@ -1,5 +1,6 @@
 import abc
 import logging
+from typing import Iterable, List
 
 from django.contrib.auth.models import User
 from django.db.models import Q
@@ -113,4 +114,29 @@ class CombinedUserSearch:
             'number_of_usernames_found': number_of_usernames_found,
             'usernames_not_found': usernames_not_found
         }
+        return context
+
+
+class InferUsernameFromEmail:
+    """
+    Some imported usernames do not match the naming convention for usernames
+    in Coldfront. As such, we can infer the 'correct' username from the user's
+    email address.
+    """
+
+    def __init__(self, users: Iterable[User]) -> None:
+        self.users = users
+    
+    def search(self) -> List[dict]:
+        """
+        Performs the search. Returns dictionary with keys 'username', the
+        inferred usenames, and 'email', the email of the user.
+        """
+        context = []
+
+        for user in self.users:
+            username = user.email.split('@')[0]
+            data = { user.email: username }
+            context.append(data)
+        
         return context
