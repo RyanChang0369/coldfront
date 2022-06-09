@@ -362,10 +362,10 @@ class UserSelectResults(LoginRequiredMixin, UserPassesTestMixin, View):
                 "redirect": request.session.get(self.REDIRECT_KEY, ""),
             }
 
-            # # Testing InferUsernameFromEmail
-            # infer = InferUsernameFromEmail(avail_users)
-            # messages.info(request, infer.search())
-            # # End test
+            # Testing InferUsernameFromEmail
+            infer = InferUsernameFromEmail(avail_users)
+            messages.info(request, infer.search())
+            # End test
 
             return render(request, self.template_name, context)
 
