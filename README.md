@@ -1,3 +1,7 @@
+# Obsolete Notice
+This branch is obsolete. Please refer to 
+[the current branch](https://gitlab.msu.edu/changry3/coldfront/-/tree/changry_email_to_username)
+
 # ColdFront - Resource Allocation System
 
 [![Documentation Status](https://readthedocs.org/projects/coldfront/badge/?version=latest)](https://coldfront.readthedocs.io/en/latest/?badge=latest)
