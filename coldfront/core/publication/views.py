@@ -1,26 +1,20 @@
-import hashlib
 import json
 import re
 
 from typing import Union
-from django.conf import settings
 
 import requests
-import os
 import io
-from io import StringIO
 from bibtexparser.bibdatabase import as_text
 from bibtexparser.bparser import BibTexParser
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db import IntegrityError
 from django.forms import formset_factory
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
-from django.views.generic import DetailView, ListView, TemplateView, View
+from django.views.generic import TemplateView, View
 from django.views.generic.edit import FormView
-from django.views.static import serve
 
 from coldfront.core.project.models import Project
 from coldfront.core.publication.forms import (
@@ -32,7 +26,6 @@ from coldfront.core.publication.forms import (
 )
 from coldfront.core.publication.models import Publication, PublicationSource
 from doi2bib import crossref
-# import orcid #NEW REQUIREMENT: orcid (pip install orcid)
 from coldfront.orcid_vars import OrcidAPI
 
 from coldfront.dict_methods import get_value_or_default
@@ -196,9 +189,6 @@ class PublicationSearchResultView(LoginRequiredMixin, UserPassesTestMixin, Templ
                     pass
                 
                 orc_pub_dict.append(orc_pub_dict_entree)
-
-                # print("Title: ", orc_pub_dict_entree['title'])
-                # print("Year: ", orc_pub_dict_entree['year'])
             
             return orc_pub_dict
         
@@ -244,20 +234,13 @@ class PublicationSearchResultView(LoginRequiredMixin, UserPassesTestMixin, Templ
 
                         orc_token = OrcidAPI.orc_api.get_search_token_from_orcid()
 
-                        # url is for a sign-in page
-                        # url = orcid_vars.orc_api.get_login_url('/authenticate', ORC_REDIRECT)
-
-                        # Can only find researchers in sandbox env if app is in sandbox
+                        # Can only find researchers in sandbox env if app is in sandbox.
+                        # Likewise, can only find researchers in non-sandbox env if app is in non-sandbox.
                         orc_record : dict = OrcidAPI.orc_api.read_record_public(orc_id, 'works', orc_token)       
 
                         matching_source_obj = source
                         return _gen_pub_dic_orc(matching_source_obj, orc_record, unique_id, orc_id, orc_token)
-                except Exception as e:
-                    # print("EXCEPTION HIT IN ORCID RESEARCHER IMPORTING.")
-                    # print(e)
-                    # print(e.args)
-                    # print("continuing...")
-
+                except Exception:
                     continue
 
         return False
@@ -266,7 +249,8 @@ class PublicationSearchResultView(LoginRequiredMixin, UserPassesTestMixin, Templ
         search_ids = list(set(request.POST.get('search_id').split()))
         project_pk = self.kwargs.get('project_pk')
 
-        missing_orcid_api = False       # True if the system detects an ORCID, but the ORCID API is not set up
+        # True if the system detects an ORCID, but the ORCID API is not set up
+        missing_orcid_api = False
         project_obj = get_object_or_404(Project, pk=project_pk)
         pubs = []
         for ele in search_ids:

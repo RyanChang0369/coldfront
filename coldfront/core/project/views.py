@@ -1,26 +1,24 @@
 import datetime
 import itertools
-from multiprocessing.managers import BaseManager
 import json
 import re
-from typing import Any, Iterable, List, Optional
-from django import http
+from typing import Any, Iterable, Optional
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.contrib.auth.decorators import user_passes_test, login_required
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User, Group
 from django.db import IntegrityError
+from coldfront.core.resource.models import Resource
 from coldfront.core.user.models import UserProfile
 from coldfront.core.utils.common import import_from_settings
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core import serializers
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Q, QuerySet
-from django.forms import formset_factory
+from django.forms import formset_factory, model_to_dict
 from django.http import (HttpResponse, HttpResponseRedirect, JsonResponse)
-from django.forms.models import model_to_dict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
@@ -28,7 +26,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from django.views.generic.base import TemplateView
 from django.views.generic.edit import FormView
 
-from coldfront.core.allocation.models import (Allocation, AllocationAdminNote, AllocationAttribute, AllocationAttributeChangeRequest, AllocationChangeRequest,
+from coldfront.core.allocation.models import (Allocation, AllocationAdminNote, AllocationAttribute, AllocationChangeRequest,
                                               AllocationStatusChoice,
                                               AllocationUser, AllocationUserNote,
                                               AllocationUserStatusChoice)
@@ -36,11 +34,11 @@ from coldfront.core.allocation.signals import (allocation_activate_user,
                                                allocation_remove_user)
 from coldfront.core.grant.models import Grant
 from coldfront.core.project.forms import (ProjectAddUserForm,
-                                          ProjectAddUsersToAllocationForm,
+                                          ProjectAddUsersToAllocationForm, ProjectImportForm,
                                           ProjectRemoveUserForm, ProjectRenameForm,
                                           ProjectReviewEmailForm,
                                           ProjectReviewForm, ProjectSearchForm, ProjectSelectForm,
-                                          ProjectUserUpdateForm, ProjectImportForm)
+                                          ProjectUserUpdateForm)
 from coldfront.core.project.models import (Project, ProjectAdminComment, ProjectReview,
                                            ProjectReviewStatusChoice,
                                            ProjectStatusChoice, ProjectUser, ProjectUserMessage,
@@ -48,11 +46,11 @@ from coldfront.core.project.models import (Project, ProjectAdminComment, Project
                                            ProjectUserStatusChoice)
 from coldfront.core.publication.models import Publication
 from coldfront.core.research_output.models import ResearchOutput
-from coldfront.core.resource.models import Resource
 from coldfront.core.user.forms import UserSearchForm
 from coldfront.core.user.utils import CombinedUserSearch
 from coldfront.core.utils.common import get_domain_url, import_from_settings
 from coldfront.core.utils.mail import send_email, send_email_template
+
 
 EMAIL_ENABLED = import_from_settings('EMAIL_ENABLED', False)
 ALLOCATION_ENABLE_ALLOCATION_RENEWAL = import_from_settings(
@@ -142,6 +140,77 @@ class ProjectDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 
         return context
 
+
+class ProjectSelectHomeView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'project/project_select_home.html'
+
+    def get_context_data(self, *args, **kwargs):
+        context = super().get_context_data(*args, **kwargs)
+        context['project_select_form'] = ProjectSearchForm()
+        return context
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+
+class ProjectSelectResultsView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """
+    Session data:
+    Expects AVAIL_KEY (List[int]: list of selectable project ids)
+    and REDIRECT_KEY (str: where to redirect to after selection is made).
+    If AVAIL_KEY is not provided, defaults to all projects.
+    Places all selected project pks into request.session[SELECTED_KEY].
+    """
+    template_name = 'project/project_select_results.html'
+    AVAIL_KEY = "project_select_avail_ids"
+    REDIRECT_KEY = "project_select_redirect"
+    SELECTED_KEY = "project_select_selected"
+
+    _proj_dict_values = [
+        "pk", "title", "pi", "field_of_science", "status"
+    ]
+    
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def post(self, request, *args, **kwargs):
+        if "select_projects" in request.POST:
+            # Submit button pressed
+            filtered_users: List = request.session.pop('user_select_filtered', [])
+            formset = formset_factory(ProjectSelectForm, max_num=len(filtered_users))
+            formset = formset(request.POST, initial=filtered_users, prefix='projectform')
+            selected_users = []
+
+            if formset.is_valid():
+                for form in formset:
+                    user_form_data = form.cleaned_data
+                    if user_form_data['selected']:
+                        user: User = User.objects.get(username=user_form_data['username'])
+                        selected_users.append(user.pk)
+            
+            request.session[self.SELECTED_KEY] = selected_users
+            return HttpResponseRedirect(request.session.get(self.REDIRECT_KEY))
+        else:
+            # Initial load
+            query = request.POST.get('query')
+            search_by = request.POST.get('search_by')
+            search_options = request.POST.getlist('search_options[]')
+
+            # List of users to filter
+            avail_user_ids = request.session.pop(self.AVAIL_KEY, list(User.objects.all().values_list('pk', flat=True)))
+            avail_users = User.objects.filter(pk__in=avail_user_ids)
+            filtered_users = self.filter_users(avail_users, query, search_by, search_options)
+            request.session['user_select_filtered'] = filtered_users
+
+            formset = formset_factory(ProjectSelectForm, max_num=len(filtered_users))
+            formset = formset(initial=filtered_users, prefix='projectform')
+            context = {
+                "matches": filtered_users,
+                "formset": formset,
+                "redirect": request.session.get(self.REDIRECT_KEY, ""),
+            }
+
+            return render(request, self.template_name, context)
 
 class ProjectListView(LoginRequiredMixin, ListView):
 
@@ -243,7 +312,6 @@ class ProjectListView(LoginRequiredMixin, ListView):
         context['filter_parameters_with_order_by'] = filter_parameters_with_order_by
 
         project_list = context.get('project_list')
-        # project_list = Project.objects.all()
         paginator = Paginator(project_list, self.paginate_by)
 
         page = self.request.GET.get('page')
@@ -505,6 +573,8 @@ class ProjectMergeView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     model = Project
     template_name = 'project/project_merge.html'
 
+    CHANGE_PAGE_KEY = 'PROJ_MERGE_CHANGE_PAGE'
+
     def test_func(self) -> Optional[bool]:
         """ UserPassesTestMixin Tests"""
         if self.request.user.is_superuser:
@@ -524,13 +594,12 @@ class ProjectMergeView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             }
 
             for project in Project.objects.exclude(status=ProjectStatusChoice.objects.get(name='Archived'))
-            
         ]
 
         return project_list
 
     def post(self, request, *args, **kwargs):   
-        def _combine_objects(from_ids: list, to_id: int, objects: BaseManager):
+        def _combine_objects(from_ids: list, to_id: int, objects):
             '''
             Moves Django models from one project to another. Make sure the model has project_id.
 
@@ -592,9 +661,7 @@ class ProjectMergeView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             # Resources are tied to allocations. Since the IDs of allocations are not
             # being changed in merge, resources should remain attached to each allocation.
             # THIS WILL NOT BE THE CASE IF WE DECIDE TO KEEP THE OLD ALLOCATIONS, as the
-            # new allocations will change IDs.
-            # Also, the code here doesn't work.
-            # _combine_objects(proj_ids, merged_proj.id, Resource.objects)
+            # new allocations will change IDs. No command is needed.
 
             # Admin comments, user messages, reviews, and resource outputs
             _combine_objects(proj_ids, merged_proj.id, ProjectAdminComment.objects)
@@ -602,11 +669,9 @@ class ProjectMergeView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             _combine_objects(proj_ids, merged_proj.id, ProjectReview.objects)
             _combine_objects(proj_ids, merged_proj.id, ResearchOutput.objects)
 
-            # Assign current user
-            # assign_user(self.request.user, merged_proj)
-
             # Archive all old projects when done. Remove this for loop if you want to
-            # keep them.
+            # keep them. They will be broken, since all of their properties will have
+            # been moved to the new merged project.
             for proj in projs_to_merge:
                 archive_project(proj)
 
@@ -614,17 +679,17 @@ class ProjectMergeView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
-        
+
         proj_list = self.get_proj_list()
         formset = formset_factory(
             ProjectSelectForm, max_num=len(proj_list))
         formset = formset(initial=proj_list, prefix='projectform')
         context['formset'] = formset
-        context['projects'] = Project.objects.all()
         context['rename'] = ProjectRenameForm
         return context
 
     def get_success_url(self):
+        self.request.session.delete(self.CHANGE_PAGE_KEY)
         return reverse('project-detail', kwargs={'pk': self.object.pk})
 
 
@@ -658,14 +723,6 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             for key in unique_keys:
                 if cur_vals[key] == new_vals[key]:
                     return True
-
-            # # id keys will be updated later in the code
-            # for key in cur_vals.keys():
-            #     cur_val = cur_vals[key]
-            #     new_val = new_vals[key]
-
-            #     if key != "id" and cur_val != new_val:
-            #         return False
             
             return False
 
@@ -755,8 +812,6 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             # Registration table for m2m.
             do_regist_tbl = {}
 
-            # * NOTE: IF ANY FIELDS ARE LATER ADDED, THEY HAVE TO BE
-            # * MANUALLY ADDED HERE IN ORDER FOR IT TO IMPORT CORRECTLY.
             # Step 3: Match fields. This has to be done manually.
             def _update_field(to_name: str, from_name: str, field_name: str, trans_tbl: dict):
                 """
@@ -925,6 +980,8 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
                     obj.save(update_fields=[field_name])
 
             
+            # * NOTE: IF ANY FIELDS ARE LATER ADDED, THEY HAVE TO BE
+            # * MANUALLY ADDED HERE IN ORDER FOR IT TO IMPORT CORRECTLY.
             _update_field("project.project", "auth.user", "pi_id", pk_translation_table)
             _register_field("resource.resource", "resource.resource", "parent_resource_id", do_regist_tbl, pk_translation_table)
             _register_m2m("resource.resource", "resource.resource", "linked_resources", do_regist_tbl, pk_translation_table)
@@ -947,7 +1004,7 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             )
 
             # Add project ids
-            # NOTE: If a model has a project ID, add it here to the list.
+            # * NOTE: If a model has a project ID, add it here to the list.
             _batch_update_field(
                 [
                     "project.projectuser",
@@ -994,6 +1051,7 @@ class ProjectImportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def get_success_url(self):
         return reverse('project-detail', kwargs={'pk': self.object.pk})
 
+
 def fix_serialize_data(data: QuerySet) -> list:
     """
     Wrapper function to serialize a QuerySet.
@@ -1018,7 +1076,7 @@ class ProjectExportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         if project_obj.projectuser_set.filter(user=self.request.user, role__name='Manager', status__name='Active').exists():
             return True
 
-    def dispatch(self, request: http.HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+    def dispatch(self, request, *args: Any, **kwargs: Any) -> HttpResponse:
         def _get_resource_query(proj_alloc):
             """
             Gets the resource query. Selects the resource(s) used by proj_alloc, and also selects
@@ -1035,7 +1093,6 @@ class ProjectExportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
 
             # This while loop goes through all resources and follows all the links until all linked
             # resources are selected.
-            # Note: Slow
             while old_resource_set != all_ids:
                 old_resource_set = all_ids
 
@@ -1071,7 +1128,7 @@ class ProjectExportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             # Allocation change request
             alloc_change_request = AllocationChangeRequest.objects.filter(allocation__in=proj_alloc)
 
-            # Allocation adim and user notes.
+            # Allocation admin and user notes.
             # NOTE: Not sure if admin notes are actually being used. I just put it here in
             # case it is actually being used or if it will be in the future.
             alloc_admin_notes = AllocationAdminNote.objects.filter(allocation__in=proj_alloc)

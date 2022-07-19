@@ -1,7 +1,7 @@
 from django import forms
 from django.shortcuts import get_object_or_404
 
-from coldfront.core.allocation.models import (Allocation, AllocationAccount,
+from coldfront.core.allocation.models import (AllocationAccount,
                                               AllocationAttributeType,
                                               AllocationAttribute,
                                               AllocationStatusChoice)

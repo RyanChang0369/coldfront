@@ -1,0 +1,52 @@
+{% if matches %}
+  <form action="{% url 'project-select-results' %}" method="post">
+    {% csrf_token %}
+    {{ formset.management_form }}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            {% if redirect != "" %}<th scope="col"><input type="checkbox" class="check" id="selectAll"></th>{% endif %}
+            <th scope="col">ID</th>
+            <th scope="col">Title</th>
+            <th scope="col">PI</th>
+            <th scope="col">Description</th>
+            <!-- <th scope="col">Source</th> -->
+          </tr>
+        </thead>
+        <tbody>
+          {% for form in formset %}
+            <tr>
+              {% if redirect != "" %}<td scope="col">{{ form.selected }}</td>{% endif %}
+              <td scope="col">{{ form.pk.value }}</td>
+              <td scope="col">{{ form.title.value }}</td>
+              <td scope="col">{{ form.pi.username.value }}</td>
+              <td scope="col">{{ form.description.value }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if redirect != "" %}
+      <button id="search-button" type="submit" name="select_users" class="btn btn-success"><i class="fas fa-search" aria-hidden="true"></i> Select Users</button>
+    {% endif %}
+  </form>
+  
+{% else %}
+  <div class="alert alert-info text-center">
+    No results!
+  </div>
+{% endif %}
+
+<script>
+  $("#selectAll").click(function() {
+    $("input[name^='projform-']").prop('checked', $(this).prop('checked'));
+  });
+
+  $("input[name^='projform-']").click(function(ele) {
+    var id = $(this).attr('id');
+    if (id != "selectAll") {
+      $("#selectAll").prop('checked', false);
+    }
+  });
+</script>

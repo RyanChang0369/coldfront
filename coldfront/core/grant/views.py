@@ -1,8 +1,6 @@
 import csv
 import re
-import json
 from typing import Union
-from django import forms
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -11,8 +9,8 @@ from django.http import HttpResponseRedirect, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views import View
-from django.views.generic import DetailView, FormView, ListView, TemplateView
-from django.views.generic.edit import CreateView, UpdateView
+from django.views.generic import FormView, ListView, TemplateView
+from django.views.generic.edit import UpdateView
 
 from coldfront.core.utils.common import Echo
 from coldfront.core.grant.forms import (

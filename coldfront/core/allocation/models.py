@@ -1,9 +1,7 @@
 import datetime
-import importlib
 import logging
 from ast import literal_eval
 
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -136,6 +134,10 @@ class Allocation(TimeStampedModel):
     def get_resources_as_string(self):
         return ', '.join([ele.name for ele in self.resources.all().order_by(
             *ALLOCATION_RESOURCE_ORDERING)])
+
+    @property
+    def get_resources_as_list(self):
+        return [ele for ele in self.resources.all().order_by('-is_allocatable')]
 
     @property
     def get_resources_as_list(self):

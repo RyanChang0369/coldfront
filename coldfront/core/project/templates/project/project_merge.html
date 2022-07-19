@@ -16,8 +16,7 @@ Merge Projects
   <div class="card border-light">
     <div class="card-body">
       <h4>Projects List</h4>
-
-        <div class="table-responsive">
+        <div class="table-responsive" style="max-height: 800px; overflow-y: scroll;">
           <table class="table table-sm table-hover">
             <thead>
               <tr>
@@ -53,7 +52,6 @@ Merge Projects
   </div>
   <div class="card border-light">
     <div class="card-body">
-      <!-- <p>Links between objects are NOT currently preserved.</p> -->
       <p id="not-enough-projs-notice" style="display:none;">
         <span class="text-info"><i class="fas fa-exclamation-circle"></i>Notice:</span>
         You do not have enough projects to merge.
@@ -105,11 +103,8 @@ Merge Projects
         {
           new_title += $(projtitles[i]).html().trim() + " ";
           new_descript += $(projdescripts[i]).html().trim() + "\n";
-          // console.log($(projtitles[i]))
         }
       }
-
-      // console.log(new_title)
 
       $(rename_title).val(new_title);
       $(rename_descript).val(new_descript);
@@ -128,8 +123,6 @@ Merge Projects
           selected_projects += 1
         }
       }
-
-      // console.log(selected_projects)
 
       var animtime = instant ? 0 : 400;
 
